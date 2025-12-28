@@ -23,24 +23,6 @@
         </a-input-password>
       </a-form-item>
 
-      <a-row :gutter="0" v-if="checkcodeFlag==='1'">
-        <a-col :span="14">
-          <a-form-item>
-            <a-input
-              v-decorator="['inputCode',{initialValue:'', rules: validatorRules.inputCode.rules}]"
-              size="large"
-              type="text"
-              default-value=""
-              placeholder="请输入验证码">
-              <a-icon slot="prefix" type="smile" :style="{ color: 'rgba(0,0,0,.25)' }"/>
-            </a-input>
-          </a-form-item>
-        </a-col>
-        <a-col :span="10" style="text-align: right">
-          <img v-if="requestCodeSuccess" style="margin-top: 2px;" :src="randCodeImage" @click="handleChangeCheckCode"/>
-          <img v-else style="margin-top: 2px;" src="../../assets/checkcode.png" @click="handleChangeCheckCode"/>
-        </a-col>
-      </a-row>
 
       <a-form-item>
         <a-checkbox :checked="checked" @change="handleChange">记住密码</a-checkbox>
@@ -111,8 +93,7 @@
         },
         validatorRules:{
           loginName:{rules: [{ required: true, message: '请输入用户名!'},{validator: this.handleLoginName}]},
-          password:{rules: [{ required: true, message: '请输入密码!',validator: 'click'}]},
-          inputCode:{rules: [{ required: true, message: '请输入验证码!',validator: 'click'}]}
+          password:{rules: [{ required: true, message: '请输入密码!',validator: 'click'}]}
         },
         verifiedCode:"",
         inputCodeContent:"", //20200510 cfm: 为方便测试，不输入验证码可 ""-->"xxxx"
@@ -123,13 +104,8 @@
         currentUsername:"",
         validate_status:"",
         currdatetime:'',
-        uuid:'',
-        randCodeImage:'',
-        registerFlag:'',
-        checkcodeFlag:'',
-        mainStyle: '',
-        btnStyle: 'margin-top:16px',
-        requestCodeSuccess:false,
+        mainStyle: 'padding-top:20px',
+        btnStyle: 'margin-top:26px',
         checked: false
       }
     },
@@ -140,8 +116,6 @@
       Vue.ls.remove(ACCESS_TOKEN)
       this.getRouterData()
       this.getRegisterFlag()
-      this.getCheckcodeFlag()
-      this.handleChangeCheckCode()
     },
     methods: {
       ...mapActions([ "Login", "Logout" ]),
@@ -180,32 +154,16 @@
       handleChange(e) {
         this.checked = e.target.checked
       },
-      handleChangeCheckCode(){
-        getAction('/user/randomImage').then(res=>{
-          if(res.code == 200){
-            this.uuid = res.data.uuid
-            this.randCodeImage = res.data.base64
-            this.requestCodeSuccess=true
-          }else{
-            this.$message.error(res.data)
-            this.requestCodeSuccess=false
-          }
-        }).catch(()=>{
-          this.requestCodeSuccess=false
-        })
-      },
       handleSubmit () {
         let that = this
         let loginParams = {};
         that.loginBtn = true;
         // 使用账户密码登陆
         if (that.customActiveKey === 'tab1') {
-          that.form.validateFields([ 'loginName', 'password', 'inputCode' ], { force: true }, (err, values) => {
+          that.form.validateFields([ 'loginName', 'password' ], { force: true }, (err, values) => {
             if (!err) {
               loginParams.loginName = values.loginName
               loginParams.password = md5(values.password)
-              loginParams.code = values.inputCode
-              loginParams.uuid = that.uuid
               if(that.checked) {
                 //勾选的时候进行缓存
                 Vue.ls.set('cache_loginName', values.loginName)
@@ -289,9 +247,6 @@
           description: ((err.response || {}).data || {}).message || err.message || err.data.message || "请求出现错误，请稍后再试",
           duration: 4,
         });
-        //验证码刷新
-        this.form.setFieldsValue({'inputCode':''})
-        this.handleChangeCheckCode()
         this.loginBtn = false;
       },
       generateCode(value){
@@ -348,18 +303,6 @@
       getRegisterFlag(){
         getAction('/platformConfig/getPlatform/registerFlag').then((res) => {
           this.registerFlag = res + ''
-        })
-      },
-      getCheckcodeFlag(){
-        getAction('/platformConfig/getPlatform/checkcodeFlag').then((res) => {
-          this.checkcodeFlag = res + ''
-          if(this.checkcodeFlag === '1') {
-            this.mainStyle = ''
-            this.btnStyle = 'margin-top:16px'
-          } else {
-            this.mainStyle = 'padding-top:20px'
-            this.btnStyle = 'margin-top:26px'
-          }
         })
       },
       //获取密码加密规则

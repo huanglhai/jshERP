@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0.24
+    container_name: jsherp-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: jsh_erp
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./jshERP-boot/docs/jsh_erp.sql:/docker-entrypoint-initdb.d/jsh_erp.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - jsherp-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6.2.1-alpine
+    container_name: jsherp-redis
+    command: redis-server --requirepass 1234abcd
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - jsherp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "1234abcd", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jsherp-boot:
+    build:
+      context: ./jshERP-boot
+      dockerfile: Dockerfile
+    container_name: jsherp-boot
+    ports:
+      - "9999:9999"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/jsh_erp?useUnicode=true&characterEncoding=utf8&useCursorFetch=true&defaultFetchSize=500&allowMultiQueries=true&rewriteBatchedStatements=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: 1234abcd
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jsherp-network
+    volumes:
+      - ./upload:/opt/jshERP/upload
+      - ./tmp:/opt/tmp/tomcat
+    restart: unless-stopped
+
+  jsherp-web:
+    build:
+      context: ./jshERP-web
+      dockerfile: Dockerfile
+    container_name: jsherp-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - jsherp-boot
+    networks:
+      - jsherp-network
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  jsherp-network:
+    driver: bridge

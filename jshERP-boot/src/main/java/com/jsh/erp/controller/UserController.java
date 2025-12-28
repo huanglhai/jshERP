@@ -137,7 +137,6 @@ public class UserController extends BaseController {
     public BaseResponseInfo login(@RequestBody UserEx userParam, HttpServletRequest request)throws Exception {
         BaseResponseInfo res = new BaseResponseInfo();
         try {
-            userService.validateCaptcha(userParam.getCode(), userParam.getUuid());
             Map<String, Object> data = userService.login(userParam.getLoginName().trim(), userParam.getPassword().trim(), request);
             res.code = 200;
             res.data = data;
@@ -361,7 +360,6 @@ public class UserController extends BaseController {
                                HttpServletRequest request)throws Exception{
         JSONObject result = ExceptionConstants.standardSuccess();
         ue.setUsername(ue.getLoginName());
-        userService.validateCaptcha(ue.getCode(), ue.getUuid());
         userService.checkLoginName(ue); //检查登录名
         userService.registerUser(ue,manageRoleId,request);
         return result;
@@ -502,34 +500,6 @@ public class UserController extends BaseController {
             logger.error(e.getMessage(), e);
         }
         return arr;
-    }
-
-    /**
-     * 获取随机校验码
-     * @param response
-     * @return
-     */
-    @GetMapping(value = "/randomImage")
-    @ApiOperation(value = "获取随机校验码")
-    public BaseResponseInfo randomImage(HttpServletResponse response){
-        BaseResponseInfo res = new BaseResponseInfo();
-        try {
-            Map<String, Object> data = new HashMap<>();
-            String uuid = UUID.randomUUID().toString().replaceAll("-", "") + "";
-            String verifyKey = BusinessConstants.CAPTCHA_CODE_KEY + uuid;
-            String codeNum = Tools.getCharAndNum(4);
-            redisService.storageCaptchaObject(verifyKey, codeNum);
-            String base64 = RandImageUtil.generate(codeNum);
-            data.put("uuid", uuid);
-            data.put("base64", base64);
-            res.code = 200;
-            res.data = data;
-        } catch (Exception e) {
-            logger.error(e.getMessage(), e);
-            res.code = 500;
-            res.data = "获取失败";
-        }
-        return res;
     }
 
     /**
